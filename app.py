@@ -28,6 +28,12 @@ BUCKET_NAME = "halfmarathon-model"
 CSV_KEY = "halfmarathon/halfmarathon_wroclaw_2023__final.csv"
 MODEL_KEY = "halfmarathon/model_polmaraton.pkl"
 
+st.set_page_config(
+    page_title="Półmaraton",
+    page_icon="uplogo.png",  
+    layout="centered"
+)
+
 # --- Session state ---
 if "czas_pred" not in st.session_state:
     st.session_state["czas_pred"] = None
@@ -151,7 +157,42 @@ Nie zgaduj ani nie wymyślaj danych których nie ma w tekście.""",
 df_hist, digital_model = load_data_and_model()
 
 # --- UI ---
-st.title("🏃 Predykcja czasu półmaratonu Wrocław")
+col_tytul, col_logo = st.columns([3, 1])
+
+with col_tytul:
+    st.markdown("""
+        <style>
+            .tytul {
+                font-size: 55px;
+                font-weight: bold;
+                font-family: 'Verdana', sans-serif;
+                color: #2C3E50;
+                line-height: 1.1;
+                margin-bottom: 0px;
+            }
+            .podtytul {
+                font-size: 22px;
+                font-weight: normal;
+                font-family: 'Verdana', sans-serif;
+                color: #5D6D7E;
+                margin-top: 0px;
+                margin-bottom: 4px;
+            }
+            .powered {
+                font-size: 14px;
+                font-family: 'Verdana', sans-serif;
+                color: #AAB7B8;
+                margin-top: 0px;
+            }
+        </style>
+        <p class="tytul">Półmaraton Wrocławski/p>
+        <p class="podtytul">Pedykcja czasu i zdobytego miejsca</p>
+        <p class="powered">Powered by KarmelCodeLab</p>
+    """, unsafe_allow_html=True)
+
+with col_logo:
+    st.image("logo.png", width=150)
+
 st.write("Opowiedz nam o sobie i podaj swój czas na 5 km.")
 text = st.text_input(
     "Opisz się",
