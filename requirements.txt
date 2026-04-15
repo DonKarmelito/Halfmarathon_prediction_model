@@ -1,7 +1,7 @@
 streamlit==1.38.0
 pandas==2.2.2
 instructor==1.4.2
-langfuse==2.41.1
+langfuse==2.42.0
 python-dotenv==1.0.1
 pydantic==2.8.2
 pycaret==3.3.2
