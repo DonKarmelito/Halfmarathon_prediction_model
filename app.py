@@ -157,41 +157,42 @@ Nie zgaduj ani nie wymyślaj danych których nie ma w tekście.""",
 df_hist, digital_model = load_data_and_model()
 
 # --- UI ---
-col_tytul, col_logo = st.columns([3, 1])
+# --- UI ---
+col_tytul, col_logo = st.columns([3, 1], vertical_alignment="center")
 
 with col_tytul:
     st.markdown("""
-        <style>
-            .tytul {
-                font-size: 55px;
-                font-weight: bold;
-                font-family: 'Verdana', sans-serif;
-                color: #2C3E50;
-                line-height: 1.1;
-                margin-bottom: 0px;
-            }
-            .podtytul {
-                font-size: 22px;
-                font-weight: normal;
-                font-family: 'Verdana', sans-serif;
-                color: #5D6D7E;
-                margin-top: 0px;
-                margin-bottom: 4px;
-            }
-            .powered {
-                font-size: 14px;
-                font-family: 'Verdana', sans-serif;
-                color: #AAB7B8;
-                margin-top: 0px;
-            }
-        </style>
-        <p class="tytul">Półmaraton Wrocławski/p>
-        <p class="podtytul">Pedykcja czasu i zdobytego miejsca</p>
-        <p class="powered">Powered by KarmelCodeLab</p>
+    <style>
+      .hero-title {
+        font-size: 55px !important;
+        font-weight: 700 !important;
+        font-family: Verdana, sans-serif !important;
+        color: #2C3E50 !important;
+        line-height: 1.1 !important;
+        margin: 0 !important;
+      }
+      .hero-subtitle {
+        font-size: 22px !important;
+        font-weight: 400 !important;
+        font-family: Verdana, sans-serif !important;
+        color: #5D6D7E !important;
+        margin: 4px 0 0 0 !important;
+      }
+      .hero-powered {
+        font-size: 14px !important;
+        font-family: Verdana, sans-serif !important;
+        color: #AAB7B8 !important;
+        margin: 4px 0 0 0 !important;
+      }
+    </style>
+
+    <h1 class="hero-title">Półmaraton Wrocławski</h1>
+    <p class="hero-subtitle">Predykcja czasu i zdobytego miejsca</p>
+    <p class="hero-powered">Powered by KarmelCodeLab</p>
     """, unsafe_allow_html=True)
 
 with col_logo:
-    st.image("logo.png", width=150)
+    st.image("logo.png", width=140) 
 
 st.write("Opowiedz nam o sobie i podaj swój czas na 5 km.")
 text = st.text_input(
