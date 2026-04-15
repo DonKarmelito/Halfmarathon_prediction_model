@@ -1,25 +1,27 @@
-import streamlit as st
-import pandas as pd
-import instructor
-from langfuse.openai import OpenAI
-from langfuse.decorators import observe
-from dotenv import load_dotenv
-from pydantic import BaseModel
-import joblib
-import boto3
 import os
-import matplotlib.pyplot as plt
+import tempfile
 from typing import Optional
+
+import boto3
+import instructor
+import joblib
+import matplotlib.pyplot as plt
+import pandas as pd
+import streamlit as st
+from dotenv import load_dotenv
+from langfuse.decorators import observe
+from langfuse.openai import OpenAI
+from pydantic import BaseModel
 
 load_dotenv()
 
 # --- Konfiguracja S3 ---
 s3 = boto3.client(
-    's3',
-    region_name='fra1',
-    endpoint_url=os.getenv('AWS_ENDPOINT_URL_S3'),
-    aws_access_key_id=os.getenv('AWS_ACCESS_KEY_ID'),
-    aws_secret_access_key=os.getenv('AWS_SECRET_ACCESS_KEY')
+    "s3",
+    region_name="fra1",
+    endpoint_url=os.getenv("AWS_ENDPOINT_URL_S3"),
+    aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID"),
+    aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY"),
 )
 
 BUCKET_NAME = "halfmarathon-model"
@@ -36,35 +38,39 @@ if "czas_pred" not in st.session_state:
 def load_data_and_model():
     try:
         obj = s3.get_object(Bucket=BUCKET_NAME, Key=CSV_KEY)
-        df_hist = pd.read_csv(obj['Body'], sep=';')
+        df_hist = pd.read_csv(obj["Body"], sep=";")
 
         def czas_na_sekundy(t):
-            if pd.isna(t): return None
-            if isinstance(t, (int, float)): return float(t)
+            if pd.isna(t):
+                return None
+            if isinstance(t, (int, float)):
+                return float(t)
             t = str(t).strip()
             try:
-                parts = t.split(':')
+                parts = t.split(":")
                 if len(parts) == 3:
                     h, m, s = map(int, parts)
                     return h * 3600 + m * 60 + s
-                elif len(parts) == 2:
+                if len(parts) == 2:
                     m, s = map(int, parts)
                     return m * 60 + s
-                else:
-                    return None
-            except:
+                return None
+            except Exception:
                 return None
 
-        df_hist['Czas_s'] = df_hist['Czas'].apply(czas_na_sekundy)
-        df_hist = df_hist.dropna(subset=['Czas_s'])
+        df_hist["Czas_s"] = df_hist["Czas"].apply(czas_na_sekundy)
+        df_hist = df_hist.dropna(subset=["Czas_s"])
         st.success(f"Wczytano {len(df_hist)} wyników dla zawodników z 2023")
 
         model_obj = s3.get_object(Bucket=BUCKET_NAME, Key=MODEL_KEY)
-        model_bytes = model_obj['Body'].read()
-        with open('temp_model.pkl', 'wb') as f:
-            f.write(model_bytes)
-        model = joblib.load('temp_model.pkl')
-        os.remove('temp_model.pkl')
+        model_bytes = model_obj["Body"].read()
+
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".pkl") as tmp:
+            tmp.write(model_bytes)
+            tmp_path = tmp.name
+
+        model = joblib.load(tmp_path)
+        os.remove(tmp_path)
 
         return df_hist, model
 
@@ -75,25 +81,27 @@ def load_data_and_model():
 
 # --- Predykcja ---
 def predykcja_dla_zawodnika(plec, kat_wiekowa, czas_5km_s, model, df_hist):
-    dane = pd.DataFrame([[plec, kat_wiekowa, czas_5km_s]],
-                        columns=['Płeć', 'Kategoria wiekowa', '5 km Czas'])
+    dane = pd.DataFrame(
+        [[plec, kat_wiekowa, czas_5km_s]],
+        columns=["Płeć", "Kategoria wiekowa", "5 km Czas"],
+    )
     czas_pred = model.predict(dane)[0]
 
-    miejsce_open = (df_hist['Czas_s'] < czas_pred).sum() + 1
-    df_kat = df_hist[df_hist['Kategoria wiekowa'] == kat_wiekowa]
-    miejsce_kat = (df_kat['Czas_s'] < czas_pred).sum() + 1
+    miejsce_open = (df_hist["Czas_s"] < czas_pred).sum() + 1
+    df_kat = df_hist[df_hist["Kategoria wiekowa"] == kat_wiekowa]
+    miejsce_kat = (df_kat["Czas_s"] < czas_pred).sum() + 1
 
     h = int(czas_pred // 3600)
     m = int((czas_pred % 3600) // 60)
     s = int(czas_pred % 60)
 
     return {
-        'czas_pred_s': float(czas_pred),
-        'przewidywany_czas': f"{h}:{m:02d}:{s:02d}",
-        'miejsce_open': int(miejsce_open),
-        'miejsce_kat': int(miejsce_kat),
-        'na_miejsc': len(df_hist),
-        'w_kat_na_miejsc': len(df_kat),
+        "czas_pred_s": float(czas_pred),
+        "przewidywany_czas": f"{h}:{m:02d}:{s:02d}",
+        "miejsce_open": int(miejsce_open),
+        "miejsce_kat": int(miejsce_kat),
+        "na_miejsc": len(df_hist),
+        "w_kat_na_miejsc": len(df_kat),
     }
 
 
@@ -107,8 +115,8 @@ class Person(BaseModel):
     komunikat_bledu: Optional[str] = None
 
 
-# --- Klient OpenAI przez Langfuse (drop-in replacement) ---
-openai_client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
+# --- Klient OpenAI przez Langfuse ---
+openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 instructor_openai_client = instructor.from_openai(openai_client)
 
 
@@ -116,23 +124,26 @@ instructor_openai_client = instructor.from_openai(openai_client)
 @observe(name="ekstrakcja-danych-biegacza")
 def przetworz_zapytanie(text):
     return instructor_openai_client.chat.completions.create(
-        model='gpt-4o',
+        model="gpt-4o",
         temperature=0,
         response_model=Person,
-        messages=[{
-            "role": "system",
-            "content": """Wyciągnij z tekstu dane biegacza: imie, plec (0=kobieta, 1=mężczyzna), 
-            kategoria_wiekowa (M20/M30/M40/M50/M60/M70 lub K20/K30/K40/K50/K60/K70), 
-            czas_5km_s (przelicz MM:SS lub minuty na sekundy).
+        messages=[
+            {
+                "role": "system",
+                "content": """Wyciągnij z tekstu dane biegacza: imie, plec (0=kobieta, 1=mężczyzna),
+kategoria_wiekowa (M20/M30/M40/M50/M60/M70 lub K20/K30/K40/K50/K60/K70),
+czas_5km_s (przelicz MM:SS lub minuty na sekundy).
 
-            Ustaw dane_kompletne=True TYLKO jeśli wszystkie 4 pola są jednoznacznie podane w tekście.
-            Jeśli czegoś brakuje, ustaw dane_kompletne=False i w komunikat_bledu napisz 
-            po polsku czego brakuje (np. 'Brakuje: wieku/kategorii wiekowej, czasu na 5 km').
-            Nie zgaduj ani nie wymyślaj danych których nie ma w tekście."""
-        }, {
-            "role": "user",
-            "content": text,
-        }]
+Ustaw dane_kompletne=True TYLKO jeśli wszystkie 4 pola są jednoznacznie podane w tekście.
+Jeśli czegoś brakuje, ustaw dane_kompletne=False i w komunikat_bledu napisz
+po polsku czego brakuje (np. 'Brakuje: wieku/kategorii wiekowej, czasu na 5 km').
+Nie zgaduj ani nie wymyślaj danych których nie ma w tekście.""",
+            },
+            {
+                "role": "user",
+                "content": text,
+            },
+        ],
     )
 
 
@@ -144,7 +155,7 @@ st.title("🏃 Predykcja czasu półmaratonu Wrocław")
 st.write("Opowiedz nam o sobie i podaj swój czas na 5 km.")
 text = st.text_input(
     "Opisz się",
-    placeholder="np. Mam na imię Marek, mam 35 lat, jestem mężczyzną, 5 km biegnę w 25:30"
+    placeholder="np. Mam na imię Marek, mam 35 lat, jestem mężczyzną, 5 km biegnę w 25:30",
 )
 
 if st.button("Oblicz") and text:
@@ -167,19 +178,24 @@ if st.button("Oblicz") and text:
         )
         st.session_state["czas_pred"] = wynik["czas_pred_s"]
 
-        st.subheader(f"Cześć {res.imie}! Twój przewidywany wynik w kategorii {res.kategoria_wiekowa} to:")
+        st.subheader(
+            f"Cześć {res.imie}! Twój przewidywany wynik w kategorii {res.kategoria_wiekowa} to:"
+        )
         c1, c2, c3 = st.columns(3)
-        c1.metric("Czas przebiegnięcia półmaratonu", wynik['przewidywany_czas'])
-        c2.metric("Miejsce OPEN", f"{wynik['miejsce_open']} / {wynik['na_miejsc']}")
-        c3.metric("Miejsce w kategorii wiekowej", f"{wynik['miejsce_kat']} / {wynik['w_kat_na_miejsc']}")
+        c1.metric("Czas przebiegnięcia półmaratonu", wynik["przewidywany_czas"])
+        c2.metric("Miejsce OPEN", f'{wynik["miejsce_open"]} / {wynik["na_miejsc"]}')
+        c3.metric(
+            "Miejsce w kategorii wiekowej",
+            f'{wynik["miejsce_kat"]} / {wynik["w_kat_na_miejsc"]}',
+        )
 
 # --- Wykres ---
 st.subheader("Rozkład wyników (wszyscy zawodnicy)")
 fig, ax = plt.subplots()
-ax.hist(df_hist['Czas_s'], bins=50)
+ax.hist(df_hist["Czas_s"], bins=50)
 
 if st.session_state["czas_pred"] is not None:
-    ax.axvline(x=st.session_state["czas_pred"], color='red', linestyle='--', label='Twój wynik')
+    ax.axvline(x=st.session_state["czas_pred"], color="red", linestyle="--", label="Twój wynik")
     ax.legend()
 
 ax.set_xlabel("Czas (sekundy)")
