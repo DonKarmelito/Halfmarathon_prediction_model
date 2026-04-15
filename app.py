@@ -5,7 +5,7 @@ from langfuse.openai import OpenAI
 from langfuse import observe
 from dotenv import load_dotenv
 from pydantic import BaseModel
-from pycaret.regression import load_model, predict_model
+import joblib
 import boto3
 import os
 import matplotlib.pyplot as plt
@@ -63,7 +63,7 @@ def load_data_and_model():
         model_bytes = model_obj['Body'].read()
         with open('temp_model.pkl', 'wb') as f:
             f.write(model_bytes)
-        model = load_model('temp_model')
+        model = joblib.load('temp_model.pkl')
         os.remove('temp_model.pkl')
 
         return df_hist, model
@@ -77,7 +77,7 @@ def load_data_and_model():
 def predykcja_dla_zawodnika(plec, kat_wiekowa, czas_5km_s, model, df_hist):
     dane = pd.DataFrame([[plec, kat_wiekowa, czas_5km_s]],
                         columns=['Płeć', 'Kategoria wiekowa', '5 km Czas'])
-    czas_pred = predict_model(model, data=dane)['prediction_label'].iloc[0]
+    czas_pred = model.predict(dane)[0]
 
     miejsce_open = (df_hist['Czas_s'] < czas_pred).sum() + 1
     df_kat = df_hist[df_hist['Kategoria wiekowa'] == kat_wiekowa]

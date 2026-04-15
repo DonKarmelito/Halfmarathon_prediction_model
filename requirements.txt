@@ -1,10 +1,11 @@
 streamlit==1.38.0
 pandas==2.2.2
+scikit-learn==1.4.2
+joblib==1.4.2
 instructor==1.4.2
 langfuse==2.42.0
 python-dotenv==1.0.1
 pydantic==2.8.2
-pycaret==3.3.2
 boto3==1.34.162
 matplotlib==3.9.2
 openai==1.55.0
