@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import instructor
 from langfuse.openai import OpenAI
-from langfuse import observe
+from langfuse.decorators import observe
 from dotenv import load_dotenv
 from pydantic import BaseModel
 import joblib
